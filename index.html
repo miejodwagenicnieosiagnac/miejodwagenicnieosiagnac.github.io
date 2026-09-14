@@ -1,13 +1,21 @@
+---
+---
+{% assign comics = site.comics | sort: "date" | reverse %}
+{% assign newest = comics | first %}
 <!doctype html>
 <html lang="pl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Miej odwagę nic nie osiągnąć</title>
-<meta name="description" content="Miej odwagę nic nie osiągnąć — komiksy.">
-<link rel="canonical" href="https://miejodwagenicnieosiagnac.pl/komiks/echo/">
-<meta http-equiv="refresh" content="0;url=/komiks/echo/">
-<script>location.replace("/komiks/echo/");</script>
+<title>{{ site.title }}</title>
+<meta name="description" content="{{ site.description | escape }}">
+{% if newest %}
+<link rel="canonical" href="{{ newest.url | absolute_url }}">
+<meta http-equiv="refresh" content="0;url={{ newest.url | relative_url }}">
+<script>location.replace({{ newest.url | relative_url | jsonify }});</script>
+{% endif %}
 </head>
-<body><a href="/komiks/echo/">Przejdź do najnowszego komiksu</a></body>
+<body>
+{% if newest %}<a href="{{ newest.url | relative_url }}">Przejdź do najnowszego komiksu</a>{% endif %}
+</body>
 </html>

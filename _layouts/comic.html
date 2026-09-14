@@ -1,0 +1,75 @@
+{% assign comics = site.comics | sort: "date" | reverse %}
+{% assign newer_comic = nil %}
+{% assign older_comic = nil %}
+{% assign found_current = false %}
+{% for comic in comics %}
+  {% if found_current %}
+    {% assign older_comic = comic %}
+    {% break %}
+  {% endif %}
+  {% if comic.url == page.url %}
+    {% assign found_current = true %}
+  {% else %}
+    {% assign newer_comic = comic %}
+  {% endif %}
+{% endfor %}
+{% assign newest = comics | first %}
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>{{ page.title }} — {{ site.title }}</title>
+<meta name="description" content="{{ page.description | default: site.description | escape }}">
+<link rel="canonical" href="{{ page.url | absolute_url }}">
+<meta property="og:type" content="article">
+<meta property="og:title" content="{{ page.title | escape }} — {{ site.title | escape }}">
+<meta property="og:description" content="{{ page.description | default: site.description | escape }}">
+<meta property="og:url" content="{{ page.url | absolute_url }}">
+<meta property="og:image" content="{{ page.image | absolute_url }}">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="{{ '/assets/style.css' | relative_url }}">
+{% if newer_comic %}
+<link rel="prefetch" href="{{ newer_comic.url | relative_url }}">
+<link rel="prefetch" href="{{ newer_comic.image | relative_url }}" as="image">
+{% endif %}
+{% if older_comic %}
+<link rel="prefetch" href="{{ older_comic.url | relative_url }}">
+<link rel="prefetch" href="{{ older_comic.image | relative_url }}" as="image">
+{% endif %}
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="{{ newest.url | relative_url }}" aria-label="{{ site.title | escape }} — najnowszy komiks">
+    <img src="{{ '/assets/logo.png' | relative_url }}" alt="{{ site.title | escape }}">
+  </a>
+  <a class="instagram" href="https://www.instagram.com/miejodwagenicnieosiagnac/" aria-label="Instagram">
+    <img src="{{ '/assets/instagram.png' | relative_url }}" alt="">
+  </a>
+</header>
+
+<div class="separator" aria-hidden="true">
+  <img src="{{ '/assets/kreska.png' | relative_url }}" alt="">
+</div>
+
+<main class="viewer" aria-label="Komiks: {{ page.title | escape }}">
+  {% if newer_comic %}
+  <a class="nav prev" href="{{ newer_comic.url | relative_url }}" aria-label="Nowszy komiks">‹</a>
+  {% else %}
+  <span class="nav prev hidden" aria-hidden="true">‹</span>
+  {% endif %}
+
+  <div class="frame">
+    <img class="comic" src="{{ page.image | relative_url }}" alt="{{ page.alt | escape }}" fetchpriority="high">
+  </div>
+
+  {% if older_comic %}
+  <a class="nav next" href="{{ older_comic.url | relative_url }}" aria-label="Starszy komiks">›</a>
+  {% else %}
+  <span class="nav next hidden" aria-hidden="true">›</span>
+  {% endif %}
+</main>
+
+<script src="{{ '/assets/viewer.js' | relative_url }}"></script>
+</body>
+</html>

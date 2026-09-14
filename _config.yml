@@ -1,0 +1,17 @@
+title: "Miej odwagę nic nie osiągnąć"
+description: "Miej odwagę nic nie osiągnąć — komiksy."
+url: "https://miejodwagenicnieosiagnac.pl"
+baseurl: ""
+timezone: "Europe/Warsaw"
+
+collections:
+  comics:
+    output: true
+    permalink: /komiks/:name/
+
+defaults:
+  - scope:
+      path: ""
+      type: comics
+    values:
+      layout: comic

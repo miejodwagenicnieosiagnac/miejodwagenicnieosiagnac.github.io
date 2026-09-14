@@ -1,5 +1,13 @@
+---
+layout: null
+---
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://miejodwagenicnieosiagnac.pl/komiks/echo/</loc></url>
-  <url><loc>https://miejodwagenicnieosiagnac.pl/komiks/dwie-godziny-pozniej/</loc></url>
+{% assign comics = site.comics | sort: "date" | reverse %}
+{% for comic in comics %}
+  <url>
+    <loc>{{ comic.url | absolute_url }}</loc>
+    <lastmod>{{ comic.date | date_to_xmlschema }}</lastmod>
+  </url>
+{% endfor %}
 </urlset>
