@@ -1,0 +1,115 @@
+name: Publish scheduled comics
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: scheduled-comic-publisher
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Publish due comics
+        id: publish
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+          import os
+          import re
+          import shutil
+
+          WARSAW = ZoneInfo("Europe/Warsaw")
+          now = datetime.now(WARSAW)
+          scheduled_dir = Path("_scheduled")
+          published_any = False
+
+          def parse_datetime(value: str) -> datetime:
+              value = value.strip().strip('"').strip("'")
+              for fmt in (
+                  "%Y-%m-%d %H:%M:%S %z",
+                  "%Y-%m-%d %H:%M %z",
+                  "%Y-%m-%dT%H:%M:%S%z",
+                  "%Y-%m-%dT%H:%M%z",
+              ):
+                  try:
+                      return datetime.strptime(value, fmt).astimezone(WARSAW)
+                  except ValueError:
+                      pass
+              raise ValueError(f"Unsupported publish_at format: {value}")
+
+          if scheduled_dir.exists():
+              for entry in sorted(scheduled_dir.glob("*.md")):
+                  text = entry.read_text(encoding="utf-8")
+                  publish_match = re.search(r"(?m)^publish_at:\s*(.+?)\s*$", text)
+                  image_match = re.search(r"(?m)^image:\s*(.+?)\s*$", text)
+
+                  if not publish_match:
+                      raise RuntimeError(f"Missing publish_at in {entry}")
+                  if not image_match:
+                      raise RuntimeError(f"Missing image in {entry}")
+
+                  publish_at = parse_datetime(publish_match.group(1))
+                  if publish_at > now:
+                      continue
+
+                  image_path = image_match.group(1).strip().strip('"').strip("'")
+                  image_name = Path(image_path.lstrip("/")).name
+                  scheduled_image = Path("_scheduled_media") / image_name
+                  public_image = Path(image_path.lstrip("/"))
+
+                  if not scheduled_image.exists():
+                      raise RuntimeError(f"Missing scheduled image: {scheduled_image}")
+
+                  Path("_comics").mkdir(parents=True, exist_ok=True)
+                  public_image.parent.mkdir(parents=True, exist_ok=True)
+
+                  target_entry = Path("_comics") / entry.name
+                  if target_entry.exists() or public_image.exists():
+                      raise RuntimeError(f"Target already exists for {entry.stem}")
+
+                  shutil.move(str(scheduled_image), str(public_image))
+                  shutil.move(str(entry), str(target_entry))
+                  print(f"Published {entry.stem} scheduled for {publish_at.isoformat()}")
+                  published_any = True
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"published={'true' if published_any else 'false'}\n")
+          PY
+
+      - name: Commit publication
+        if: steps.publish.outputs.published == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Publish scheduled comics"
+          git push origin HEAD:main
+
+      - name: Request GitHub Pages rebuild
+        if: steps.publish.outputs.published == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl --fail-with-body --silent --show-error \
+            -L -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/pages/builds"
